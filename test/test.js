@@ -37,4 +37,4 @@ describe('/logout', () => {
       .expect('Location', '/')
       .expect(302);
   });
-})
+});
