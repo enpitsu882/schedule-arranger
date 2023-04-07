@@ -3,7 +3,7 @@ const request = require('supertest');
 const app = require('../app');
 const passportStub = require('passport-stub');
 
-describe('login', () => {
+describe('/login', () => {
   beforeAll(() => {
     passportStub.install(app);
     passportStub.login({ username: 'testuser' });
@@ -29,3 +29,12 @@ describe('login', () => {
       .expect(200);
   });
 });
+
+describe('/logout', () => {
+  test('/ にリダイレクトされる', async () => {
+    await request(app)
+      .get('/logout')
+      .expect('Location', '/')
+      .expect(302);
+  });
+})
