@@ -7,6 +7,7 @@ const Candidate = sequelize.define(
     candidateId: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      autoIncrement: true,
       allowNull: false
     },
     candidateName: {
