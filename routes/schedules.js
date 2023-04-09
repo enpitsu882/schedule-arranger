@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const Schedule = require('../models/schedule');
 const Candidate = require('../models/candidate');
 const User = require('../models/user');
+const Availability = require('../models/availability');
 
 router.get('/new', authenticationEnsurer, (req, res, next) => {
   res.render('new', { user: req.user });
@@ -47,11 +48,33 @@ router.get('/:scheduleId', authenticationEnsurer, async (req, res, next) => {
       where: { scheduleId: schedule.scheduleId },
       order: [['candidateId', 'ASC']]
     });
+    // データベースからその予定の全ての出欠を取得する
+    const availabilities = await Availability.findAll({
+      include: [
+        {
+          model: User,
+          attributes: ['userId', 'username']
+        }
+      ],
+      where: { scheduleId: schedule.scheduleId },
+      order: [[User, 'username', 'ASC'], ['candidateId', 'ASC']]
+    });
+    // 出欠 MapMap(キー:ユーザ ID, 値:出欠Map(キー:候補 ID, 値:出欠)) を作成する
+    const availabilityMapMap = new Map(); // key: userId, value: Map(key: candidateId, value: availability)
+    availabilities.forEach(a => {
+      const map = availabilityMapMap.get(a.user.userId) || new Map();
+      map.set(a.candidateId, a.availability);
+      availabilityMapMap.set(a.user.userId, map);
+    });
+
+    console.log(availabilityMapMap); // TODO 除外する
+
     res.render('schedule', {
       user: req.user,
       schedule: schedule,
       candidates: candidates,
-      users: [req.user]
+      users: [req.user],
+      availabilityMapMap: availabilityMapMap
     });
   } else {
     const err = new Error('指定された予定は見つかりません');
