@@ -67,13 +67,37 @@ router.get('/:scheduleId', authenticationEnsurer, async (req, res, next) => {
       availabilityMapMap.set(a.user.userId, map);
     });
 
-    console.log(availabilityMapMap); // TODO 除外する
+    // 閲覧ユーザと出欠に紐づくユーザからユーザ Map (キー:ユーザ ID, 値:ユーザ) を作る
+    const userMap = new Map(); // key: userId, value: User
+    userMap.set(parseInt(req.user.id), {
+      isSelf: true,
+      userId: parseInt(req.user.id),
+      username: req.user.username
+    });
+    availabilities.forEach((a) => {
+      userMap.set(a.user.userId, {
+        isSelf: parseInt(req.user.id) === a.user.userId,
+        userId: a.user.id,
+        username: a.user.username
+      });
+    });
+
+    // 全ユーザ，全候補で二重ループしてそれぞれの出欠の値がない場合には，「欠席」を設定する
+    const users = Array.from(userMap).map(keyValue => keyValue[1]);
+    users.forEach((u) => {
+      candidates.forEach((c) => {
+        const map = availabilityMapMap.get(u.userId) || new Map();
+        const a = map.get(c.candidateId) || 0;
+        map.set(c.candidateId, a);
+        availabilityMapMap.set(u.userId, map);
+      });
+    });
 
     res.render('schedule', {
       user: req.user,
       schedule: schedule,
       candidates: candidates,
-      users: [req.user],
+      users: users,
       availabilityMapMap: availabilityMapMap
     });
   } else {
