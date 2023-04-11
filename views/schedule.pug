@@ -17,7 +17,12 @@ block content
           - var availability = availabilityMapMap.get(user.userId).get(candidate.candidateId);
           - var availabilityLabels = ['欠', '？', '出'];
           td 
-            if user.isSelf 
-              button #{availabilityLabels[availability]}
+            if user.isSelf
+              button(
+                data-schedule-id=schedule.scheduleId
+                data-user-id=user.userId
+                data-candidate-id=candidate.candidateId
+                data-availability=availability
+              ).availability-toggle-button #{availabilityLabels[availability]}
             else 
               p #{availabilityLabels[availability]}
