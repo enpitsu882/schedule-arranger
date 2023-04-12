@@ -7,6 +7,7 @@ const Schedule = require('../models/schedule');
 const Candidate = require('../models/candidate');
 const User = require('../models/user');
 const Availability = require('../models/availability');
+const Comment = require('../models/comment');
 
 router.get('/new', authenticationEnsurer, (req, res, next) => {
   res.render('new', { user: req.user });
@@ -93,12 +94,22 @@ router.get('/:scheduleId', authenticationEnsurer, async (req, res, next) => {
       });
     });
 
+    // コメント取得
+    const comments = await Comment.findAll({
+      where: { scheduleId: schedule.scheduleId }
+    });
+    const commentMap = new Map(); // key: userId, value: comment
+    comments.forEach((comment) => {
+      commentMap.set(comment.userId, comment.comment);
+    });
+
     res.render('schedule', {
       user: req.user,
       schedule: schedule,
       candidates: candidates,
       users: users,
-      availabilityMapMap: availabilityMapMap
+      availabilityMapMap: availabilityMapMap,
+      commentMap: commentMap
     });
   } else {
     const err = new Error('指定された予定は見つかりません');
