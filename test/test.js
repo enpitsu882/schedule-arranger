@@ -6,6 +6,7 @@ const User = require('../models/user');
 const Schedule = require('../models/schedule');
 const Candidate = require('../models/candidate');
 const Availability = require('../models/availability');
+const Comment = require('../models/comment');
 
 describe('/login', () => {
   beforeAll(() => {
@@ -102,7 +103,8 @@ describe('/schedule/:scheduleId/users/:userId/candidates/:candidateId', () => {
       .send({
         scheduleName: 'テスト出欠更新予定1',
         memo: 'テスト出欠更新メモ1',
-        candidates: 'テスト出欠更新候補1' });
+        candidates: 'テスト出欠更新候補1'
+      });
     const createdSchedulePath = res.headers.location;
     scheduleId = createdSchedulePath.split('/schedules/')[1];
     const candidate = await Candidate.findOne({
@@ -122,17 +124,67 @@ describe('/schedule/:scheduleId/users/:userId/candidates/:candidateId', () => {
   });
 });
 
+describe('/schedule/:scheduleId/users/:userId/comments', () => {
+  let scheduleId = '';
+  beforeAll(() => {
+    passportStub.install(app);
+    passportStub.login({ id: 0, username: 'testuser' });
+  });
+
+  afterAll(async () => {
+    passportStub.logout();
+    passportStub.uninstall();
+    await deleteScheduleAggregate(scheduleId);
+  });
+
+  test('コメントが更新できる', async () => {
+    await User.upsert({ userId: 0, username: 'testuser' });
+    const res = await request(app)
+      .post('/schedules')
+      .send({
+        scheduleName: 'テスト出欠更新予定1',
+        memo: 'テスト出欠更新メモ1',
+        candidates: 'テスト出欠更新候補1'
+      });
+    const createdSchedulePath = res.headers.location;
+    scheduleId = createdSchedulePath.split('/schedules/')[1];
+    // 更新がされることをテスト
+    const userId = 0;
+    await request(app)
+      .post(`/schedules/${scheduleId}/users/${userId}/comments`)
+      .send({ comment: 'testcomment' })
+      .expect('{"status":"OK","comment":"testcomment"}');
+    const comments = await Comment.findAll({
+      where: { scheduleId: scheduleId }
+    });
+    expect(comments.length).toBe(1);
+    expect(comments[0].comment).toBe('testcomment');
+  });
+});
+
 async function deleteScheduleAggregate(scheduleId) {
+  // コメントの削除
+  const comments = await Comment.findAll({
+    where: { scheduleId:scheduleId }
+  });
+  const promiseCommentDestroy = comments.map((c) => { return c.destroy(); });
+  await Promise.all(promiseCommentDestroy);
+
+  // 出欠の削除
   const availabilities = await Availability.findAll({
     where: { scheduleId: scheduleId }
   });
   const promiseAvailabilityDestroy = availabilities.map((a) => { return a.destroy(); });
   await Promise.all(promiseAvailabilityDestroy);
+
+  // 候補の削除
   const candidates = await Candidate.findAll({
     where: { scheduleId: scheduleId }
   });
   const promisesCandidateDestroy = candidates.map((c) => { return c.destroy(); });
   await Promise.all(promisesCandidateDestroy);
+
+  // スケジュールの削除
   const s = await Schedule.findByPk(scheduleId);
   await s.destroy();
 }
