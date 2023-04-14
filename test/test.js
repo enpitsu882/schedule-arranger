@@ -162,6 +162,51 @@ describe('/schedule/:scheduleId/users/:userId/comments', () => {
   });
 });
 
+describe('/schedule/:scheduleId?edit=1', () => {
+  let scheduleId = '';
+  beforeAll(() => {
+    passportStub.install(app);
+    passportStub.login({ id: 0, username: 'testuser' });
+  });
+
+  afterAll(async () => {
+    passportStub.logout();
+    passportStub.uninstall();
+    await deleteScheduleAggregate(scheduleId);
+  });
+
+  test('予定が更新でき，候補が追加できる', async () => {
+    await User.upsert({ userId: 0, username: 'testuser' });
+    const res = await request(app)
+      .post('/schedules')
+      .send({
+        scheduleName: 'テスト更新予定1',
+        memo: 'テスト更新メモ1',
+        candidates: 'テスト更新候補1'
+      });
+    const createdSchedulePath = res.headers.location;
+    scheduleId = createdSchedulePath.split('/schedules/')[1];
+    // 更新がされることをテスト
+    await request(app)
+      .post(`/schedules/${scheduleId}?edit=1`)
+      .send({
+        scheduleName: 'テスト更新予定2',
+        memo: 'テスト更新メモ2',
+        candidates: 'テスト更新候補2'
+      });
+    const s = await Schedule.findByPk(scheduleId);
+    expect(s.scheduleName).toBe('テスト更新予定2');
+    expect(s.memo).toBe('テスト更新メモ2');
+    const candidates = await Candidate.findAll({
+      where: { scheduleId: scheduleId },
+      order: [['candidateId', 'ASC']]
+    });
+    expect(candidates.length).toBe(2);
+    expect(candidates[0].candidateName).toBe('テスト更新候補1');
+    expect(candidates[1].candidateName).toBe('テスト更新候補2');
+  });
+});
+
 async function deleteScheduleAggregate(scheduleId) {
   // コメントの削除
   const comments = await Comment.findAll({
