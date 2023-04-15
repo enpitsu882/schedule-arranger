@@ -1,5 +1,7 @@
 'use strict';
 import $ from 'jquery';
+grobalThis.jQuery = $;
+import bootstrap from 'bootstrap';
 
 $('.availability-toggle-button').each((i, e) => {
   const button = $(e);
