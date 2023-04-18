@@ -91,7 +91,14 @@ app.get('/auth/github',
 app.get('/auth/github/callback',
   passport.authenticate('github', { failuerRedirect: '/login' }),
   (req, res) => {
-    res.redirect('/');
+    const loginFrom = req.cookies.loginFrom;
+    // オープンリダイレクタ脆弱性対策
+    if (loginFrom && loginFrom.startsWith('/')) {
+      res.clearCookie('loginFrom');
+      res.redirect(loginFrom);
+    } else {
+      res.redirect('/');
+    }
   }
 );
 
